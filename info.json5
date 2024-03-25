@@ -1,14 +1,18 @@
 {
-  id: "tr1ngledev.4dmod-example",
-  name: "4DMod Example",
+  id: "tr1ngledev.better-glass",
+  name: "Better Glass",
   author: "Tr1NgleDev",
-  description: "An example mod",
+  description: "Better Glass.\n \
+  Yes i did rewrite the entire chunk mesh generation code for that to work.\n \
+  And no, it is NOT in 4D. I did simple 2D tiling for each side except for W ones because idfk how that would work.\n \
+  You can turn off glass tiling in Settings, which will leave you with just the optimized generation for transparent blocks:tm:.\n \
+  The tiles.png that the mod uses is inside the mod's directory. And YES it does replace the normal tiles.png (only in memory) \
+  \n\n\n(wtf resource pack manager v0.0.0.0.1??????)",
   version: "1.0",
   gameVersion: "0.2.1.4",
   modDLL: "4DMod.dll",
   externalDLLs: [
   ],
   dependencies: {
-    // "tr1ngledev.4dkeybinds": "? before > 1.0" // "?" is an optional dependency, "before" makes the dependency load before this mod, "> 1.0" dependency with version bigger than 1.0
   },
 }
