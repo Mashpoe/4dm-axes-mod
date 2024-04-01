@@ -2,12 +2,17 @@
 
 #include <4dm.h>
 #include <glm/gtc/random.hpp>
-#include "Console.h"
 
 using namespace fdm;
 
 // Initialize the DLLMain
 initDLL
+
+$hookStatic(int, main_cpp, main)
+{
+	Sleep(10000);
+	return original();
+}
 
 $hook(void, StateIntro, init, StateManager& s)
 {
@@ -98,38 +103,6 @@ $hook(void, ItemTool, renderEntity, const m4::Mat5& mat, bool inHand, const glm:
 	original(self, mat, inHand, lightDir);
 }
 
-uint8_t getBlock(World* world, const glm::ivec4& block)
-{
-	if (block.y >= Chunk::HEIGHT || block.y < 0)
-	{
-		return 0;
-	}
-
-	Chunk* c = world->getChunkFromCoords(block.x, block.z, block.w);
-	if (c != nullptr)
-	{
-		// coords must be floats
-		glm::vec4 coords = block;
-
-		glm::ivec4 b = {
-			coords.x - (glm::floor(coords.x / Chunk::SIZE) * Chunk::SIZE),
-			coords.y,
-			coords.z - (glm::floor(coords.z / Chunk::SIZE) * Chunk::SIZE),
-			coords.w - (glm::floor(coords.w / Chunk::SIZE) * Chunk::SIZE),
-		};
-
-		return c->blocks[b.x + 1][b.z + 1][b.w + 1][b.y];
-	}
-	return BlockInfo::BARRIER;
-}
-
-// tr1ngle setBlockUpdate is supposed to be a bool lol
-bool setBlockUpdate(World* world, const glm::ivec4& block, uint8_t value)
-{
-	world->setBlockUpdate(block, value);
-	return (getBlock(world, block) == value);
-}
-
 $hook(bool, ItemTool, action, World* world, Player* player, int action)
 {
 	if (action == GLFW_MOUSE_BUTTON_LEFT)
@@ -137,7 +110,7 @@ $hook(bool, ItemTool, action, World* world, Player* player, int action)
 		if (player->targetingBlock)
 		{
 			// get the block type
-			uint8_t block = getBlock(world, player->targetBlock);
+			uint8_t block = world->getBlock(player->targetBlock);
 
 			if (block == BlockInfo::LAVA)
 			{
@@ -178,7 +151,7 @@ bool normalAxeBreak(World* world, Player* player, uint8_t block, const glm::ivec
 {
 	if (block != BlockInfo::DEADLY_ORE)
 	{
-		if (!setBlockUpdate(world, blockPos, BlockInfo::AIR))
+		if (!world->setBlockUpdate(blockPos, BlockInfo::AIR))
 		{
 			return false;
 		}
@@ -241,7 +214,7 @@ $hook(bool, ItemTool, breakBlock, World* world, Player* player, uint8_t block, c
 						continue;
 					}
 
-					if (!setBlockUpdate(world, glm::ivec4{ x, y, z, w } + chunkOffset, BlockInfo::AIR))
+					if (!world->setBlockUpdate(glm::ivec4{ x, y, z, w } + chunkOffset, BlockInfo::AIR))
 					{
 						continue;
 					}
@@ -296,60 +269,6 @@ $hook(bool, ItemTool, entityAction, World* world, Player* player, Entity* entity
 	return original(self, world, player, entity, action);
 }
 
-// please add this to 4dm.h tr1ngle
-void setQuadRendererMode(QuadRenderer* qr, GLuint mode)
-{
-	if (mode == qr->mode)
-	{
-		return;
-	}
-
-	if (mode == GL_TRIANGLES)
-	{
-		constexpr GLuint indices[] = {
-			0, 1, 2, // first triangle
-			2, 3, 0  // second triangle
-		};
-
-		if (qr->VAO != 0)
-		{
-			glBindVertexArray(qr->VAO);
-			glBindBuffer(GL_ARRAY_BUFFER, qr->buffers[0]);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-		}
-
-		qr->mode = GL_TRIANGLES;
-		qr->elementCount = 6;
-	}
-	else
-	{
-		if (qr->VAO != 0)
-		{
-			constexpr GLuint indices[] = {
-				0, 1, 2, 3
-			};
-
-			glBindVertexArray(qr->VAO);
-			glBindBuffer(GL_ARRAY_BUFFER, qr->buffers[0]);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-		}
-
-		qr->mode = GL_LINE_LOOP;
-		qr->elementCount = 4;
-	}
-}
-
-// tr1ngle I think your qr render is broken. I can't do GL_LINE_LOOP!
-void renderQuadRenderer(QuadRenderer* qr)
-{
-	qr->shader->use();
-	glBindVertexArray(qr->VAO);
-	glDrawElements(qr->mode, qr->elementCount, GL_UNSIGNED_INT, 0);
-	glBindVertexArray(0);
-}
-
 $hookStaticByFunc(void, Func::Item::renderItemDescription, std::unique_ptr<Item>& item, const glm::ivec2& pos)
 {
 	int renderX = pos.x + 5;
@@ -370,10 +289,10 @@ $hookStaticByFunc(void, Func::Item::renderItemDescription, std::unique_ptr<Item>
 
 	// render background quad
 	Item::qr->setPos(renderX - 5, renderY - 5, charWidth * text.length() + 10, charHeight + 10);
-	setQuadRendererMode(Item::qr, GL_TRIANGLES);
+	Item::qr->setQuadRendererMode(GL_TRIANGLES);
 	Item::qr->setColor(0, 0, 0, 1);
-	renderQuadRenderer(Item::qr);
-	setQuadRendererMode(Item::qr, GL_LINE_LOOP);
+	Item::qr->render();
+	Item::qr->setQuadRendererMode(GL_LINE_LOOP);
 
 	// text
 	Item::fr->setText(text);
@@ -398,7 +317,7 @@ $hookStaticByFunc(void, Func::Item::renderItemDescription, std::unique_ptr<Item>
 		glBindVertexArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-		renderQuadRenderer(Item::qr);
+		Item::qr->render();
 
 		Item::fr->color = { 1, 0, 1, 0.7 };
 		Item::fr->pos = { renderX + offset1.x, renderY + offset1.y };
@@ -413,7 +332,7 @@ $hookStaticByFunc(void, Func::Item::renderItemDescription, std::unique_ptr<Item>
 	else
 	{
 		Item::qr->setColor(0.5, 0, 0.5, 1.0);
-		renderQuadRenderer(Item::qr);
+		Item::qr->render();
 	}
 	Item::fr->color = { 1, 1, 1, 1 };
 	Item::fr->pos = { renderX, renderY };
