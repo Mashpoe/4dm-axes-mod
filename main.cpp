@@ -8,12 +8,6 @@ using namespace fdm;
 // Initialize the DLLMain
 initDLL
 
-$hookStatic(int, main_cpp, main)
-{
-	Sleep(10000);
-	return original();
-}
-
 $hook(void, StateIntro, init, StateManager& s)
 {
 	original(self, s);
