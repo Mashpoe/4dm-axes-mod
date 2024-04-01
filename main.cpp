@@ -309,7 +309,7 @@ $hookStaticByFunc(void, Func::Item::renderItemDescription, std::unique_ptr<Item>
 
 		Item::qr->setPos(renderX - 5, renderY - 5, charWidth * text.length() + 10, charHeight + 10);
 		glm::vec4 colors[] = {
-			{1, 1, 1, 1},
+			{1, 0, 1, 1},
 			{0, 1, 1, 1},
 			{0, 1, 1, 1},
 			{1, 0, 1, 1},
