@@ -51,46 +51,57 @@ $hook(void, ItemTool, renderEntity, const m4::Mat5& mat, bool inHand, const glm:
 	{
 		glm::vec3 colorA;
 		glm::vec3 colorB;
+		glm::vec3 colorC;
 		if (name == "Iron Axe")
 		{
 			colorA = glm::vec3{ 0.7f };
 			colorB = colorA;
+			colorC = colorA;
 		}
 		else
 		{
 			colorA = glm::vec3{ 0.7, 0, 0.7 };
 			colorB = glm::vec3{ 0, 0.7, 0.7 };
+			colorC = glm::vec3{ 0.35, 0.35, 0.7 };
 		}
 
 		// don't question this, it works
-		m4::Mat5 axeMat{ 1 };
+		m4::Mat5 transform{ 1 };
+		transform *= m4::Mat5(m4::Rotor{ m4::wedge({0, 0, 1, 0}, {0, 1, 0, 0}), glm::pi<float>() / 4 });
+		transform.scale(glm::vec4{ 0.1f, 1.0f, 1.0f, 1.0f });
+		transform.translate(glm::vec4{ -0.5f, -0.5f, -0.5f, -0.5f });
 
-		axeMat.translate(glm::vec4{ 0, 1.3, 0.2f, 0 });
+		m4::Mat5 axeMat1 = mat;
+		axeMat1 *= m4::Mat5(m4::Rotor{ m4::wedge({0, 0, 1, 0}, {0, 0, 0, 1}), glm::pi<float>() / 7 });
+		axeMat1.translate(glm::vec4{ 0, 0.9f, 0.7f, 0 });
+		axeMat1 *= transform;
 
-		axeMat *= m4::Mat5(m4::Rotor{ m4::wedge({0, 0, 1, 0}, {0, 1, 0, 0}), glm::pi<float>() / 4 });
+		m4::Mat5 axeMat2 = mat;
+		axeMat2 *= m4::Mat5(m4::Rotor{ m4::wedge({0, 0, 1, 0}, {0, 0, 0, 1}), -glm::pi<float>() / 7 });
+		axeMat2.translate(glm::vec4{ 0, 0.9f, -0.7f, 0 });
+		axeMat2 *= transform;
 
-		axeMat.scale(glm::vec4{ 0.1f, 1.0f, 1.0f, 1.0f });
-
-		axeMat.translate(glm::vec4{ -0.5f, -0.5f, -0.5f, -0.5f });
-
-		m4::Mat5 axeMat2{ 1 };
-		axeMat2.translate(glm::vec4{ 0, 0, 1.5f, 0 });
-		axeMat2 = axeMat * axeMat2;
-
-		axeMat *= mat;
-		axeMat2 *= mat;
+		m4::Mat5 connectorMat = mat;
+		connectorMat.translate(glm::vec4{ 0, 0.9f, 0, 0 });
+		connectorMat.scale(glm::vec4{ 0.3f, 0.5f, 0.3f, 0.5f });
+		connectorMat.translate(glm::vec4{ -0.5f, -0.5f, -0.5f, -0.5f });
 
 		const Shader* axeShader = ShaderManager::get("tetSolidColorNormalShader");
 		axeShader->use();
 		glUniform4fv(glGetUniformLocation(axeShader->id(), "lightDir"), 1, &lightDir[0]);
 
 		glUniform4f(glGetUniformLocation(axeShader->id(), "inColor"), colorA.r, colorA.g, colorA.b, 1);
-		glUniform1fv(glGetUniformLocation(axeShader->id(), "MV"), sizeof(axeMat) / sizeof(float), &axeMat[0][0]);
+		glUniform1fv(glGetUniformLocation(axeShader->id(), "MV"), sizeof(axeMat1) / sizeof(float), &axeMat1[0][0]);
 
 		ItemMaterial::barRenderer->render();
 
 		glUniform4f(glGetUniformLocation(axeShader->id(), "inColor"), colorB.r, colorB.g, colorB.b, 1);
 		glUniform1fv(glGetUniformLocation(axeShader->id(), "MV"), sizeof(axeMat2) / sizeof(float), &axeMat2[0][0]);
+
+		ItemMaterial::barRenderer->render();
+
+		glUniform4f(glGetUniformLocation(axeShader->id(), "inColor"), colorC.r, colorC.g, colorC.b, 1);
+		glUniform1fv(glGetUniformLocation(axeShader->id(), "MV"), sizeof(connectorMat) / sizeof(float), &connectorMat[0][0]);
 
 		ItemMaterial::barRenderer->render();
 	}
